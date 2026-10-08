@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VerificAI — Antes de compartilhar, observe os <b>sinais</b></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand" id="brand-logo" role="button" tabindex="0" title="Voltar para a página inicial" style="cursor: pointer;"><div class="logo">L</div>VerificAI</div>
+</header>
+<main>
+  <section id="home" class="hero">
+    <h1>Antes de compartilhar,<br><span>observe os sinais.</span></h1>
+    <p>Cole o link de uma notícia. Mostramos um indicador de confiabilidade explicado por 5 critérios — a conclusão final é sua.</p>
+    <form id="form" novalidate>
+      <input id="url" type="url" placeholder="https://exemplo.com.br/noticia" aria-label="Link da notícia" autocomplete="off">
+      <button type="submit">Verificar</button>
+    </form>
+    <div class="err" id="err" role="alert"></div>
+    <p class="note">A VerificAI organiza sinais e evidências — a decisão final é sempre do leitor.</p>
+  </section>
+
+  <section id="result">
+    <div class="grid">
+      <div class="card gauge">
+        <div class="sub" style="text-align:left;letter-spacing:.08em">INDICADOR GERAL</div>
+        <svg viewBox="0 0 340 200" aria-hidden="true">
+          <path d="M40 180 A130 130 0 0 1 300 180" fill="none" stroke="#1c2c4b" stroke-width="30" stroke-linecap="round"/>
+          <defs><linearGradient id="g"><stop offset="0" stop-color="#e5655b"/><stop offset="1" stop-color="#ef9a5a"/></linearGradient></defs>
+          <path id="arc" d="M40 180 A130 130 0 0 1 300 180" fill="none" stroke="url(#g)" stroke-width="30" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" style="transition:stroke-dasharray 1s cubic-bezier(.2,.8,.2,1)"/>
+        </svg>
+        <div class="num" id="score">0</div>
+        <div class="est">de 100 (estimativa)</div>
+        <p class="verdict" id="verdict"></p>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="card crit">
+        <h2>Análise por critério</h2>
+        <div class="sub">Pesos definidos pelo método AHP (CR = 2,49%)</div>
+        <div id="rows"></div>
+      </div>
+    </div>
+    <div class="three">
+      <div class="card"><h3 style="color:var(--green)">O que sustenta</h3><p id="best"></p></div>
+      <div class="card"><h3 style="color:var(--amber)">O que enfraquece</h3><p id="worst"></p></div>
+      <div class="card"><h3 style="color:var(--teal)">O que não foi confirmado</h3><p id="unc"></p></div>
+    </div>
+    <button class="back" id="back" type="button">Verificar outro link</button>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

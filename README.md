@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VerificAI
 
 > **Antes de compartilhar, observe os sinais.**
@@ -56,3 +57,72 @@ A relevância temporal das informações é considerada no processo.
 ### Responsabilidade
 
 O indicador é apresentado como uma **estimativa**, evitando transmitir uma falsa certeza sobre a veracidade de uma informação.
+
+# VerificAI - Detector de Fake News e Análise de Confiabilidade de Notícias
+
+Aplicação completa (Fullstack) de análise crítica de notícias e detecção de Fake News desenvolvida com **Flask**, **Web Scraping (Trafilatura/BS4)**, **Machine Learning (LinearSVC treinado no FakeRecogna)** e **Frontend VerificAI (HTML5/CSS3/JS)**.
+
+O sistema recebe a URL de uma notícia colocada pelo usuário no frontend, realiza a extração do texto jornalístico, submete o conteúdo ao classificador `LinearSVC` e decompõe a confiabilidade em uma escala de 0 a 100%, detalhando 5 critérios analíticos: **Evidências**, **Qualidade das fontes**, **Corroboração**, **Contexto** e **Atualidade**.
+
+---
+
+## 🚀 Como Executar a Aplicação Completa
+
+### 1. Ativar o Ambiente Virtual
+```bash
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows
+# .venv\Scripts\activate
+```
+
+### 2. Instalar Dependências (se ainda não instaladas)
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Iniciar o Servidor Integrado
+```bash
+python run.py
+```
+
+### 4. Acessar no Navegador
+Abra seu navegador em:
+👉 **`http://localhost:5000`**
+
+A interface do **VerificAI** carregará automaticamente na tela, conectada diretamente à API de Web Scraping e ao modelo LinearSVC!
+
+> **Nota de flexibilidade**: Você também pode abrir o arquivo `verificAI-front_inicial/index.html` diretamente com dois cliques no navegador caso prefira; ele se comunicará perfeitamente com a API através do suporte a CORS habilitado.
+
+---
+
+## 🧠 Arquitetura do Modelo LinearSVC
+
+- **Modelo**: `models/best_linearsvc_model.joblib` (Pipeline Scikit-Learn com `TfidfVectorizer` de 50.000 termos/bigramas + `LinearSVC`).
+- **Treinamento**: Corpus *FakeRecogna / Fake.br*.
+- **Calibração de Saída**: Distância do hiperplano (`decision_function`) convertida para porcentagem de confiança de 0 a 100% via função sigmoide:
+  $$P(\text{Confiável}) = \frac{100}{1 + e^{\text{margem}}}$$
+- **Regra de Negócio**:
+  - $\ge 50.0\% \rightarrow$ **Confiável** (`"confiavel"`)
+  - $< 50.0\% \rightarrow$ **Não Confiável / Suspeita de Fake News** (`"desconfiavel"`)
+
+---
+
+## 📡 Endpoints da API
+
+- **`GET /`**: Interface Web do VerificAI (Frontend completo).
+- **`GET /api/health`**: Verifica status da API, critérios e se o modelo LinearSVC está carregado.
+- **`POST /api/analyze`**: Recebe `{"url": "https://..."}` e retorna a análise com score de 0 a 100, veredito e os 5 critérios.
+- **`POST /api/reload-model`**: Recarrega modelos da pasta `models/` sem reiniciar o servidor.
+
+---
+
+## 🧪 Testes Automatizados
+
+Para rodar todos os testes unitários e de integração:
+```bash
+pytest
+```
+Todos os 8 testes cobrem rotas da API, serviço estático do frontend, web scraping, classificação de notícias confiáveis vs fake news e calibração do LinearSVC.
+>>>>>>> ab2981b (feat: make VerificAI logo clickable to return to home screen)
