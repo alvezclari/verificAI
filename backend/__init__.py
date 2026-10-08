@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
-from app.config import Config
-from app.routes import api_bp
+from backend.config import Config
+from backend.routes import api_bp
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "verificAI-front_inicial"
 

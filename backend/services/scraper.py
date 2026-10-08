@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 import trafilatura
-from app.config import Config
+from backend.config import Config
 
 logger = logging.getLogger(__name__)
 

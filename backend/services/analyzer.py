@@ -7,7 +7,7 @@ from pathlib import Path
 from dateutil import parser as date_parser
 import joblib
 import numpy as np
-from app.config import Config
+from backend.config import Config
 
 logger = logging.getLogger(__name__)
 
