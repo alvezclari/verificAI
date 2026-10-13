@@ -2,18 +2,12 @@
 Script de Exemplo: Treinamento e Exportação de Modelo de Fake News para a pasta models/
 
 Este script demonstra como treinar um classificador do Scikit-Learn com TF-IDF
-e salvá-lo como 'models/model.pkl', compatível diretamente com o backend.
+com splits e métricas no MLflow, salvando em models/ensemble/lexical.joblib.
 """
 
-from pathlib import Path
-import joblib
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
+import sys
 
-BASE_DIR = Path(__file__).resolve().parent
-MODELS_DIR = BASE_DIR / "models"
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
+from backend.ml.training import parse_args, run_training
 
 # Exemplo de mini-dataset em Português
 # Rótulo 1: Notícia Confiável
@@ -41,28 +35,18 @@ training_labels = [
     0, 0, 0, 0, 0, 0   # Fake News
 ]
 
-def train_and_export():
-    print("[*] Treinando pipeline com TfidfVectorizer + LogisticRegression...")
-    
-    # Monta pipeline completo que aceita texto cru
-    pipeline = Pipeline([
-        ("tfidf", TfidfVectorizer(
-            lowercase=True,
-            ngram_range=(1, 2),
-            max_features=5000
-        )),
-        ("clf", LogisticRegression(random_state=42))
+def train_and_export(argv=None):
+    """Demonstra splits, métricas e MLflow; não mede qualidade em notícias reais."""
+    args = parse_args([
+        "--data", "embedded-example", "--real-label", "1", "--stage", "lexical",
+        *(sys.argv[1:] if argv is None else argv),
     ])
-    
-    pipeline.fit(training_texts, training_labels)
-    
-    # Salva o pipeline diretamente em models/model.pkl
-    output_path = MODELS_DIR / "model.pkl"
-    joblib.dump(pipeline, output_path)
-    
-    print(f"[+] Modelo de exemplo salvo com sucesso em: {output_path}")
-    print("[+] Agora o backend carregará este modelo automaticamente!")
+    if args.stage != "lexical":
+        raise ValueError("Use train_ensemble.py e um corpus real para treinar o Transformer.")
+    return run_training(args, training_texts, training_labels, {
+        "source": "embedded-example", "real_label": "1", "purpose": "smoke-test-only",
+    })
+
 
 if __name__ == "__main__":
     train_and_export()
-
