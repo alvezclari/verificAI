@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # VerificAI
 
 > **Antes de compartilhar, observe os sinais.**
@@ -6,6 +5,10 @@
 A **VerificAI** é um protótipo de aplicação voltado à **avaliação da confiabilidade de informações e notícias**. A proposta é auxiliar o usuário na análise crítica de uma informação antes de seu compartilhamento, organizando diferentes sinais de evidência em um **indicador geral de confiabilidade**.
 
 O sistema recebe o link de uma notícia e apresenta uma análise estruturada com base em cinco critérios, permitindo que o usuário compreenda **por que uma informação recebeu determinada avaliação**, em vez de depender apenas de uma classificação automática.
+
+A versão atual combina classificação textual léxica e semântica, com cinco
+sinais heurísticos auxiliares. A verificação de alegações em fontes independentes
+faz parte da evolução prevista.
 
 ## Objetivo
 
@@ -58,71 +61,72 @@ A relevância temporal das informações é considerada no processo.
 
 O indicador é apresentado como uma **estimativa**, evitando transmitir uma falsa certeza sobre a veracidade de uma informação.
 
-# VerificAI - Detector de Fake News e Análise de Confiabilidade de Notícias
+## Execução
 
-Aplicação completa (Fullstack) de análise crítica de notícias e detecção de Fake News desenvolvida com **Flask**, **Web Scraping (Trafilatura/BS4)**, **Machine Learning (LinearSVC treinado no FakeRecogna)** e **Frontend VerificAI (HTML5/CSS3/JS)**.
-
-O sistema recebe a URL de uma notícia colocada pelo usuário no frontend, realiza a extração do texto jornalístico, submete o conteúdo ao classificador `LinearSVC` e decompõe a confiabilidade em uma escala de 0 a 100%, detalhando 5 critérios analíticos: **Evidências**, **Qualidade das fontes**, **Corroboração**, **Contexto** e **Atualidade**.
-
----
-
-## 🚀 Como Executar a Aplicação Completa
-
-### 1. Ativar o Ambiente Virtual
 ```bash
-# macOS / Linux
-source .venv/bin/activate
-
-# Windows
-# .venv\Scripts\activate
-```
-
-### 2. Instalar Dependências (se ainda não instaladas)
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Iniciar o Servidor Integrado
-```bash
+python3.14 -m venv .venv-classificador
+source .venv-classificador/bin/activate
+python -m pip install -r requirements-lock.txt
 python run.py
 ```
 
-### 4. Acessar no Navegador
-Abra seu navegador em:
-👉 **`http://localhost:5000`**
+Acesse `http://localhost:5000`. O Flask serve o frontend em `frontend/`.
+Quando o bundle treinado está presente, o padrão é o ensemble de
+`classificador.joblib` com mDeBERTa-v3, com probabilidades por componente,
+calibração e faixa inconclusiva. Sem esse bundle, o padrão é o classificador
+calibrado isolado. Acesse `/docs` para testar a API e consultar o
+JSON. Veja o [guia da API local](docs/api-local.md).
 
-A interface do **VerificAI** carregará automaticamente na tela, conectada diretamente à API de Web Scraping e ao modelo LinearSVC!
+Para levar os pesos treinados, os dados e o histórico MLflow a outra máquina,
+siga o [guia de continuação em outro ambiente](docs/continuacao-em-outro-ambiente.md).
+O clone contém o classificador importado; o mDeBERTa treinado é restaurado pelo
+pacote de artefatos, fora do Git.
 
-> **Nota de flexibilidade**: Você também pode abrir o arquivo `verificAI-front_inicial/index.html` diretamente com dois cliques no navegador caso prefira; ele se comunicará perfeitamente com a API através do suporte a CORS habilitado.
+## Modelos e ensemble
 
----
+A API mantém os artefatos LinearSVC existentes e agora aceita um ensemble de
+**TF-IDF + Regressão Logística e Transformer mDeBERTa-v3**, com inferência paralela
+e soft voting de probabilidades. Um manifesto local seleciona o ensemble após
+fine-tuning com `MODEL_BACKEND=ensemble`. `MODEL_BACKEND=legacy` seleciona o
+baseline; `calibrated` usa o classificador importado isoladamente.
 
-## 🧠 Arquitetura do Modelo LinearSVC
+O treinamento suporta etapas separadas ou integradas, splits compartilhados e
+registro obrigatório de hiperparâmetros, métricas, dados e artefatos no MLflow.
 
-- **Modelo**: `models/best_linearsvc_model.joblib` (Pipeline Scikit-Learn com `TfidfVectorizer` de 50.000 termos/bigramas + `LinearSVC`).
-- **Treinamento**: Corpus *FakeRecogna / Fake.br*.
-- **Calibração de Saída**: Distância do hiperplano (`decision_function`) convertida para porcentagem de confiança de 0 a 100% via função sigmoide:
-  $$P(\text{Confiável}) = \frac{100}{1 + e^{\text{margem}}}$$
-- **Regra de Negócio**:
-  - $\ge 50.0\% \rightarrow$ **Confiável** (`"confiavel"`)
-  - $< 50.0\% \rightarrow$ **Não Confiável / Suspeita de Fake News** (`"desconfiavel"`)
-
----
-
-## 📡 Endpoints da API
-
-- **`GET /`**: Interface Web do VerificAI (Frontend completo).
-- **`GET /api/health`**: Verifica status da API, critérios e se o modelo LinearSVC está carregado.
-- **`POST /api/analyze`**: Recebe `{"url": "https://..."}` e retorna a análise com score de 0 a 100, veredito e os 5 critérios.
-- **`POST /api/reload-model`**: Recarrega modelos da pasta `models/` sem reiniciar o servidor.
-
----
-
-## 🧪 Testes Automatizados
-
-Para rodar todos os testes unitários e de integração:
 ```bash
-pytest
+pip install -r requirements-ml.txt
+python train_ensemble.py --help
 ```
-Todos os 8 testes cobrem rotas da API, serviço estático do frontend, web scraping, classificação de notícias confiáveis vs fake news e calibração do LinearSVC.
->>>>>>> ab2981b (feat: make VerificAI logo clickable to return to home screen)
+
+Veja o [diagnóstico e guia completo do ensemble](docs/ensemble.md), incluindo
+convenções de rótulos, limitações do dataset, treinamento, MLflow e ativação.
+
+Acompanhe os [marcos, estados atuais e próximas entregas](docs/evolucao-projeto.md)
+da evolução do projeto.
+
+A integração supervisionada com o corpus `banco_fake.csv`, o Fake.Br e o
+classificador importado está descrita no [guia do mDeBERTa na API](docs/mdeberta.md).
+
+## API
+
+- `GET /api/health`: estado dos modelos, ensemble e erros de carregamento.
+- `POST /api/analyze`: recebe `{"url":"https://..."}` e retorna análise, score,
+  veredito, critérios e detalhes dos modelos.
+- `POST /api/reload-model`: recarrega os artefatos locais.
+
+No classificador calibrado, o score é `100 × (1 − prob_fake)`, com as faixas
+originais verdadeira/inconclusiva/falsa. No ensemble supervisionado v2, o score é
+a probabilidade combinada e calibrada de notícia confiável × 100, com as faixas
+definidas por P(fake) de 0,35 e 0,65; os cinco critérios continuam informativos.
+O ensemble genérico v1 usa limiar 50. No caminho legado,
+o score mantém a combinação de 70% ML e 30% critérios. A sigmoide da margem do
+LinearSVC legado é uma aproximação sem calibração aprendida.
+
+## Testes
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 python -m pytest -q
+```
+
+Com `requirements-ml.txt`, a suíte também testa fine-tuning local, inferência do
+ensemble e rastreamento real no MLflow, sem baixar um modelo durante os testes.

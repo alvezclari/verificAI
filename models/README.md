@@ -1,30 +1,31 @@
-# Modelos de Machine Learning (Pasta `models/`)
+# Artefatos dos classificadores
 
-Esta pasta é destinada aos arquivos do modelo de Machine Learning que você treinar.
+`best_linearsvc_model.joblib` e `model.pkl` são os artefatos legados. A API
+prioriza o primeiro quando `MODEL_BACKEND=legacy`.
 
-## Como plugar seu modelo treinado:
+`MODEL_BACKEND=calibrated` carrega `classificador.joblib` usando o pacote
+`ml/`, com calibração, ajuste para texto curto e faixas originais. Execute com
+`requirements-classificador.txt`. Veja o [guia da API](../docs/api-local.md).
 
-1. Salve seu modelo e vetorizador em formato pickle usando `joblib` ou `pickle`:
-   ```python
-   import joblib
+O treinamento novo gera `models/ensemble/lexical.joblib`, `lexical_metadata.json`,
+`transformer/`, `data_provenance.json` e `manifest.json`. O Transformer contém
+pesos, configuração, tokenizador e `training_metadata.json` exportados após
+fine-tuning. O manifesto é criado após avaliar os dois componentes.
 
-   # Se você usar um Pipeline do Scikit-Learn (Vetorizador + Classificador juntos):
-   joblib.dump(meu_pipeline, "models/model.pkl")
+O bundle é ignorado pelo Git e registrado no MLflow. Não há pipeline DVC
+preexistente; caso ele seja adotado, versione o diretório inteiro para manter
+os artefatos consistentes. O novo CLI não sobrescreve os arquivos legados.
 
-   # Ou se salvar separadamente:
-   joblib.dump(meu_modelo, "models/model.pkl")
-   joblib.dump(meu_vectorizer, "models/vectorizer.pkl")
-   ```
+Consulte [treinamento, ativação e convenções de classes](../docs/ensemble.md).
 
-2. Cole os arquivos nesta pasta (`models/`):
-   - `model.pkl` (obrigatório para ativar o modelo de ML próprio)
-   - `vectorizer.pkl` (opcional, caso não faça parte de um Pipeline único)
 
-3. O backend em `app/services/analyzer.py` detectará automaticamente os arquivos ao inicializar ou processar as requisições.
+O bundle ativo local é `models/mdeberta-ensemble/`: cópia do classificador
+importado, pesos/tokenizador do mDeBERTa supervisionado, procedência e manifesto
+v2 com pesos e calibração do ensemble. Quando esse manifesto existe, ele é o
+padrão na inicialização sem `MODEL_BACKEND` explícito. Veja o
+[guia do mDeBERTa](../docs/mdeberta.md).
 
-4. Você pode checar se o modelo foi detectado acessando o endpoint:
-   `GET http://localhost:5000/api/health`
-   Que retornará `"model_loaded": true`.
-
-Enquanto nenhum arquivo `.pkl` for colocado nesta pasta, o backend usará um analisador baseline (heurístico/NLP) totalmente funcional para não bloquear os testes do frontend!
-
+Para restaurar esses pesos em outro ambiente, use o [guia de transferência](../docs/continuacao-em-outro-ambiente.md).
+O script `scripts/transfer_artifacts.py` inclui o bundle completo, dados e
+MLflow, com checksums. Os arquivos em `exports/` são transferidos separadamente
+do repositório; não são enviados pelo Git.
