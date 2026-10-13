@@ -8,7 +8,7 @@ h1,h2,h3,.num,.brand{font-family:"Space Grotesk","Hanken Grotesk",sans-serif}
 header{display:flex;justify-content:space-between;align-items:center;padding:24px clamp(16px,3vw,40px)}
 .brand{display:flex;align-items:center;gap:14px;font-size:1.5rem;font-weight:700;cursor:pointer;user-select:none;transition:opacity .2s ease}
 .brand:hover{opacity:.85}
-.logo{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:1.2rem;background:linear-gradient(135deg,#1f4a63,#8fd8cf)}
+.logo{display:block;width:44px;height:44px;object-fit:contain;flex-shrink:0}
 .tag{border:1px solid var(--line);border-radius:999px;padding:8px 16px;color:var(--muted);font-size:.9rem}
 main{max-width:1180px;margin:0 auto;padding:0 clamp(16px,3vw,40px) 48px}
 .hero{text-align:center;padding:9vh 0 6vh}
