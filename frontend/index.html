@@ -15,7 +15,7 @@
 <main>
   <section id="home" class="hero">
     <h1>Antes de compartilhar,<br><span>observe os sinais.</span></h1>
-    <p>Cole o link de uma notícia. Mostramos um indicador de confiabilidade explicado por 5 critérios — a conclusão final é sua.</p>
+    <p>Cole o link de uma notícia. O modelo analisa o texto e apresenta uma estimativa, a faixa do resultado e os termos que contribuíram para a classificação.</p>
     <form id="form" novalidate>
       <input id="url" type="url" placeholder="https://exemplo.com.br/noticia" aria-label="Link da notícia" autocomplete="off">
       <button type="submit">Verificar</button>
@@ -27,7 +27,7 @@
   <section id="result">
     <div class="grid">
       <div class="card gauge">
-        <div class="sub" style="text-align:left;letter-spacing:.08em">INDICADOR GERAL</div>
+        <div class="sub" style="text-align:left;letter-spacing:.08em">ESTIMATIVA TEXTUAL</div>
         <svg viewBox="0 0 340 200" aria-hidden="true">
           <path d="M40 180 A130 130 0 0 1 300 180" fill="none" stroke="#1c2c4b" stroke-width="30" stroke-linecap="round"/>
           <defs><linearGradient id="g"><stop offset="0" stop-color="#e5655b"/><stop offset="1" stop-color="#ef9a5a"/></linearGradient></defs>
@@ -39,16 +39,26 @@
         <div class="meta" id="meta"></div>
       </div>
       <div class="card crit">
-        <h2>Análise por critério</h2>
-        <div class="sub">Pesos definidos pelo método AHP (CR = 2,49%)</div>
-        <div id="rows"></div>
+        <h2>Resultado do modelo</h2>
+        <p id="probabilities"></p>
+        <div id="components"></div>
+        <p class="desc" id="thresholds"></p>
+        <p class="desc" id="model-info"></p>
+        <h3>Métricas de avaliação</h3>
+        <div id="metrics"></div>
+        <p class="desc">Essas métricas descrevem os conjuntos do experimento e não medem o acerto desta notícia.</p>
       </div>
     </div>
     <div class="three">
-      <div class="card"><h3 style="color:var(--green)">O que sustenta</h3><p id="best"></p></div>
-      <div class="card"><h3 style="color:var(--amber)">O que enfraquece</h3><p id="worst"></p></div>
-      <div class="card"><h3 style="color:var(--teal)">O que não foi confirmado</h3><p id="unc"></p></div>
+      <div class="card"><h3 style="color:var(--green)">Termos que favorecem</h3><p id="best"></p></div>
+      <div class="card"><h3 style="color:var(--amber)">Termos que desfavorecem</h3><p id="worst"></p></div>
+      <div class="card"><h3 style="color:var(--teal)">Como interpretar</h3><p id="unc"></p></div>
     </div>
+    <details class="card signals">
+      <summary>Sinais auxiliares do texto</summary>
+      <p class="desc">Heurísticas informativas. No classificador calibrado, não alteram a probabilidade nem verificam fatos em fontes externas.</p>
+      <div id="rows"></div>
+    </details>
     <button class="back" id="back" type="button">Verificar outro link</button>
   </section>
 </main>

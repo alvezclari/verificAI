@@ -4,11 +4,12 @@ from pathlib import Path
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from backend.config import Config
-from backend.routes import api_bp
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "verificAI-front_inicial"
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 def create_app(config_class=Config):
+    from backend.routes import api_bp
+
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -23,6 +24,10 @@ def create_app(config_class=Config):
 
     # Registro das rotas da API
     app.register_blueprint(api_bp)
+
+    @app.route("/docs", methods=["GET"])
+    def api_docs():
+        return send_from_directory(FRONTEND_DIR, "api-docs.html")
 
     # Servir o Frontend VerificAI na raiz e arquivos estáticos (CSS, JS, imagens)
     @app.route("/", methods=["GET"])

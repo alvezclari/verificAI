@@ -1,13 +1,15 @@
-import os
+import hashlib
+import json
 import re
 import logging
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from dateutil import parser as date_parser
 import joblib
 import numpy as np
 from backend.config import Config
+from backend.ml.errors import ModelUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,10 @@ class NewsAnalyzerService:
         self.model = None
         self.vectorizer = None
         self.model_loaded = False
+        self.ensemble = None
+        self.calibrated = None
+        self.active_model_path = None
+        self.model_error = None
         self._load_local_model()
 
     def _load_local_model(self):
@@ -23,6 +29,43 @@ class NewsAnalyzerService:
         Tenta carregar o modelo treinado pelo usuário a partir da pasta models/.
         Aceita tanto pipelines completos (ex: LinearSVC .joblib/.pkl) quanto modelo + vetorizador.
         """
+        self.model = None
+        self.vectorizer = None
+        self.ensemble = None
+        self.calibrated = None
+        self.active_model_path = None
+        self.model_loaded = False
+        self.model_error = None
+        self.backend = Config.MODEL_BACKEND
+        if self.backend == "calibrated":
+            try:
+                from backend.ml.calibrated import CalibratedClassifier
+                self.calibrated = CalibratedClassifier(Config.CLASSIFIER_PATH)
+                self.active_model_path = str(Config.CLASSIFIER_PATH)
+                self.model_loaded = True
+                logger.info("Classificador calibrado carregado: %s", self.calibrated.version)
+            except Exception as exc:
+                self.model_error = str(exc)
+                logger.error("Falha ao carregar classificador calibrado: %s", exc)
+            return
+        if self.backend == "ensemble":
+            try:
+                if not Config.ENSEMBLE_ENABLED:
+                    raise ValueError("Ensemble desabilitado por ENSEMBLE_ENABLED.")
+                from backend.ml.ensemble import SoftVotingEnsemble
+                self.ensemble = SoftVotingEnsemble.from_manifest(
+                    Config.ENSEMBLE_MANIFEST, device=Config.TRANSFORMER_DEVICE,
+                )
+                self.active_model_path = str(Config.ENSEMBLE_MANIFEST)
+                self.model_loaded = True
+                logger.info("Ensemble carregado de %s", Config.ENSEMBLE_MANIFEST)
+            except Exception as exc:
+                self.model_error = str(exc)
+                logger.error("Falha ao carregar ensemble: %s", exc)
+            return
+        if self.backend != "legacy":
+            self.model_error = "MODEL_BACKEND deve ser calibrated, legacy ou ensemble."
+            return
         model_path = Config.get_model_path()
         vectorizer_path = Config.VECTORIZER_PATH
 
@@ -40,17 +83,41 @@ class NewsAnalyzerService:
                     self.vectorizer = None
                     
                 self.model_loaded = True
+                self.active_model_path = str(model_path)
             except Exception as e:
                 logger.error(f"Erro ao carregar modelo de {model_path}: {e}")
                 self.model = None
                 self.vectorizer = None
                 self.model_loaded = False
+                self.model_error = str(e)
         else:
             self.model_loaded = False
 
     def is_model_loaded(self) -> bool:
         """Verifica se há um modelo de ML próprio carregado."""
         return self.model_loaded
+
+    def model_status(self) -> dict:
+        semantic = getattr(self.ensemble, "semantic", None)
+        return {
+            "backend": self.backend,
+            "loaded": self.model_loaded,
+            "path": self.active_model_path,
+            "version": self.calibrated.version if self.calibrated else getattr(self.ensemble, "version", None),
+            "sha256": self.calibrated.sha256 if self.calibrated else getattr(self.ensemble, "sha256", None),
+            "transformer": {
+                "loaded": True, "device": str(semantic.device),
+                "max_length": semantic.max_length,
+                "source_model": semantic.metadata.get("source_model", semantic.metadata.get("base_model")),
+                "task": semantic.metadata.get("task"),
+            } if semantic is not None and hasattr(semantic, "metadata") else None,
+            "error": self.model_error,
+        }
+
+    def probability_thresholds(self):
+        if self.calibrated:
+            return self.calibrated.manifest["limiares_prob_fake"]
+        return getattr(self.ensemble, "thresholds", None)
 
     def reload_model(self) -> bool:
         """Recarrega os arquivos de modelo se o usuário tiver adicionado recentemente."""
@@ -62,12 +129,13 @@ class NewsAnalyzerService:
         Executa a análise completa da notícia extraída pelo scraper:
         - Avalia os 5 critérios (Evidências, Qualidade das fontes, Corroboração, Contexto, Atualidade)
         - Calcula a pontuação de confiança (0 a 100)
-        - Aplica a regra de negócio: >= 50 Confiável | < 50 Desconfiável
+        - Preserva as faixas originais do classificador calibrado.
+        - No modo legado/ensemble aplica o limiar binário configurado.
         """
-        # Garante recarregamento se o modelo tiver sido inserido na pasta models/
-        model_file = Config.get_model_path()
-        if not self.model_loaded and model_file and model_file.exists():
-            self._load_local_model()
+        predictor = self.calibrated or self.ensemble
+        prediction_mode = "calibrated" if self.calibrated is not None else ("ensemble" if self.ensemble is not None else "legacy")
+        if self.backend in ("calibrated", "ensemble") and (not self.model_loaded or predictor is None):
+            raise ModelUnavailableError(f"Modelo selecionado indisponível: {self.model_error or 'sem diagnóstico'}")
 
         text = article_data.get("text", "")
         title = article_data.get("title", "")
@@ -96,16 +164,21 @@ class NewsAnalyzerService:
         # 2. Avaliação pelo Modelo de ML (LinearSVC ou outro em models/)
         ml_score = None
         ml_details = None
-        if self.model_loaded and self.model is not None:
+        if predictor is not None or (self.model_loaded and self.model is not None):
             try:
-                ml_score, ml_details = self._predict_with_user_model(title, text)
+                ml_score, ml_details = self._predict_with_user_model(title, text, predictor=predictor)
             except Exception as e:
                 logger.error(f"Erro ao inferir com o modelo do usuário: {e}")
+                if prediction_mode != "legacy":
+                    raise ModelUnavailableError("Falha na inferência do modelo selecionado") from e
                 ml_score = None
                 ml_details = None
 
         # 3. Determinação da pontuação final de confiança (0 a 100)
-        if ml_score is not None:
+        if prediction_mode != "legacy" and ml_score is not None:
+            # O score dos modelos calibrado/ensemble mantém as heurísticas informativas.
+            final_score = ml_score
+        elif ml_score is not None:
             # Combinação: 70% predição do modelo treinado (LinearSVC) + 30% métricas dos 5 critérios
             final_score = round((ml_score * 0.70) + (criteria_avg * 0.30), 1)
         else:
@@ -114,9 +187,15 @@ class NewsAnalyzerService:
         # Garante limite estrito de 0 a 100
         final_score = max(0.0, min(100.0, final_score))
 
-        # 4. Regra de negócio estipulada pelo usuário:
-        # "ela vai de 0 a 100 de 50 + seria confiavel e - de 50 seria desconfiavel"
-        if final_score >= Config.CONFIDENCE_THRESHOLD:
+        # 4. Faixas do artefato calibrado ou limiar dos modos anteriores.
+        has_bands = ml_details is not None and ml_details.get("faixa") is not None
+        if has_bands:
+            verdict, verdict_label = {
+                "verdadeira": ("confiavel", "Provavelmente verdadeira"),
+                "inconclusiva": ("inconclusiva", "Resultado inconclusivo"),
+                "falsa": ("desconfiavel", "Possível desinformação"),
+            }[ml_details["faixa"]]
+        elif final_score >= Config.CONFIDENCE_THRESHOLD:
             verdict = "confiavel"
             verdict_label = "Confiável"
         else:
@@ -124,7 +203,15 @@ class NewsAnalyzerService:
             verdict_label = "Não Confiável / Suspeita de Fake News"
 
         # 5. Síntese textual da análise
-        summary = self._generate_summary(final_score, verdict, evidencias, qualidade_fontes, corroboracao)
+        if has_bands:
+            summary = (
+                f"O classificador estimou {ml_details['prob_fake'] * 100:.2f}% de probabilidade "
+                f"da classe falsa; faixa {ml_details['faixa']}. "
+                "A análise considera padrões do texto e não confirma fatos em fontes externas."
+            )
+        else:
+            summary = self._generate_summary(final_score, verdict, evidencias, qualidade_fontes, corroboracao)
+        input_hash = hashlib.sha256(json.dumps([title, text], ensure_ascii=False).encode()).hexdigest()
 
         return {
             "status": "success",
@@ -139,8 +226,22 @@ class NewsAnalyzerService:
             "confidence_score": final_score,
             "verdict": verdict,
             "verdict_label": verdict_label,
-            "threshold": Config.CONFIDENCE_THRESHOLD,
-            "used_custom_ml_model": self.model_loaded and (ml_score is not None),
+            "threshold": None if has_bands else Config.CONFIDENCE_THRESHOLD,
+            "thresholds": ml_details.get("thresholds") if ml_details else None,
+            "prob_fake": ml_details.get("prob_fake") if ml_details else None,
+            "faixa": ml_details.get("faixa") if ml_details else None,
+            "model_version": ml_details.get("versao_modelo") if ml_details else None,
+            "model_evaluation": ml_details.get("evaluation") if ml_details else None,
+            "score_method": {"calibrated": "calibrated_model", "ensemble": "ensemble", "legacy": "legacy_blend"}[prediction_mode],
+            "criteria_affect_score": prediction_mode == "legacy",
+            "criteria_method": "heuristic_text_signals",
+            "provenance": {
+                "analyzed_at": datetime.now(timezone.utc).isoformat(),
+                "input_sha256": input_hash,
+                "model_sha256": ml_details.get("model_sha256") if ml_details else None,
+                "extraction": article_data.get("extraction"),
+            },
+            "used_custom_ml_model": ml_score is not None,
             "ml_details": ml_details,
             "criteria": {
                 "evidencias": evidencias,
@@ -152,13 +253,39 @@ class NewsAnalyzerService:
             "summary": summary
         }
 
-    def _predict_with_user_model(self, title: str, text: str) -> tuple[float, dict]:
+    def _predict_with_user_model(self, title: str, text: str, predictor=None) -> tuple[float, dict]:
         """
         Executa a predição usando o modelo do usuário (ex: LinearSVC).
         Adapta-se a modelos com decision_function, predict_proba ou predict simples.
         Retorna (ml_confidence_score, ml_details).
         """
+        predictor = predictor or self.calibrated or self.ensemble
+        if predictor is not None:
+            if hasattr(predictor, "predict_document"):
+                details = predictor.predict_document(title, text)
+            else:
+                details = predictor.predict(f"{title} {text}".strip())
+            return details["ml_confidence_percent"], details
+        if self.backend in ("calibrated", "ensemble"):
+            raise ModelUnavailableError("Modelo selecionado indisponível durante a inferência.")
         input_content = f"{title} {text}".strip()
+
+        # Probabilidades nativas têm prioridade, inclusive na Regressão Logística.
+        if hasattr(self.model, "predict_proba"):
+            from backend.ml.ensemble import LexicalClassifier
+            adapter = LexicalClassifier(
+                self.model, reliable_class=Config.PROBABILISTIC_RELIABLE_CLASS,
+                vectorizer=self.vectorizer,
+            )
+            probs = adapter.predict_proba([input_content])[0]
+            score = float(probs[1] * 100)
+            return score, {
+                "model_type": "Probabilistic Classifier",
+                "predicted_class": int(probs[1] >= 0.5),
+                "raw_prediction_label": "Classificada pelo modelo",
+                "probabilities": {"fake": float(probs[0]), "confiavel": float(probs[1])},
+                "ml_confidence_percent": score,
+            }
 
         # Se houver vetorizador separado
         if self.vectorizer is not None:
@@ -177,7 +304,7 @@ class NewsAnalyzerService:
             else:
                 pred_class = 1 if decision > 0 else 0
             
-            # Calibração sigmoide:
+            # Aproximação sigmoide legada, sem calibração aprendida:
             # decision > 0 => Fake News (classe 1)
             # decision < 0 => Notícia Real (classe 0)
             # Probabilidade de Confiável = 1 / (1 + exp(decision))
@@ -189,28 +316,10 @@ class NewsAnalyzerService:
 
             ml_details = {
                 "model_type": "LinearSVC (FakeRecogna)",
+                "probability_method": "uncalibrated_sigmoid",
                 "hyperplane_distance": round(decision, 4),
                 "predicted_class": pred_class,
                 "raw_prediction_label": pred_label,
-                "ml_confidence_percent": ml_score
-            }
-            return ml_score, ml_details
-
-        # 2. Caso o modelo forneça probabilidades nativas (predict_proba)
-        elif hasattr(self.model, "predict_proba"):
-            probs = self.model.predict_proba(X)
-            pred_class = int(self.model.predict(X)[0]) if hasattr(self.model, "predict") else 0
-            if probs.shape[1] >= 2:
-                # Se classe 1 for Confiável:
-                prob_confiavel = float(probs[0][1])
-                ml_score = round(prob_confiavel * 100.0, 1)
-            else:
-                ml_score = round(float(probs[0][0]) * 100.0, 1)
-
-            ml_details = {
-                "model_type": "Probabilistic Classifier",
-                "predicted_class": pred_class,
-                "raw_prediction_label": "Classificada pelo modelo",
                 "ml_confidence_percent": ml_score
             }
             return ml_score, ml_details

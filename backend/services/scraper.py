@@ -1,4 +1,6 @@
 import logging
+import importlib.metadata
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
@@ -128,6 +130,7 @@ class ScraperService:
 
         return {
             "url": url,
+            "final_url": response.url,
             "domain": domain,
             "title": title.strip() if title else "Sem título",
             "text": text.strip(),
@@ -135,5 +138,12 @@ class ScraperService:
             "publish_date": publish_date.strip() if publish_date else None,
             "word_count": word_count,
             "external_links_count": len(article_links),
+            "extraction": {
+                "requested_url": url,
+                "final_url": response.url,
+                "retrieved_at": datetime.now(timezone.utc).isoformat(),
+                "trafilatura_version": importlib.metadata.version("trafilatura"),
+                "beautifulsoup_version": importlib.metadata.version("beautifulsoup4"),
+            },
         }
 

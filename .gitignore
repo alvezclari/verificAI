@@ -1,4 +1,9 @@
 .venv/
+.venv-classificador/
+.venv-*/
+.env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
 *.pyo
@@ -7,4 +12,13 @@ __pycache__/
 dist/
 build/
 .DS_Store
+models/ensemble/
+models/mdeberta-*/
+mlruns/
+mlartifacts/
+mlflow.db*
+.hf-cache/
+data/
+exports/
+handoff-import.json
 

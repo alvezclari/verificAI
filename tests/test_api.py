@@ -1,10 +1,14 @@
 import pytest
 from unittest.mock import patch
-from app import create_app
-from app.config import Config
+from backend import create_app
+from backend.config import Config
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    from backend import routes
+    from backend.services.analyzer import NewsAnalyzerService
+    monkeypatch.setattr(Config, "MODEL_BACKEND", "legacy")
+    monkeypatch.setattr(routes, "analyzer_service", NewsAnalyzerService())
     app = create_app()
     app.config["TESTING"] = True
     with app.test_client() as client:
@@ -53,7 +57,7 @@ def test_analyze_localhost_forbidden(client):
     data = response.get_json()
     assert "localhost" in data["message"].lower()
 
-@patch("app.routes.scraper_service.scrape")
+@patch("backend.routes.scraper_service.scrape")
 def test_analyze_reliable_news(mock_scrape, client):
     """Testa fluxo de análise para uma notícia com características confiáveis (>= 50)."""
     mock_scrape.return_value = {
@@ -98,7 +102,7 @@ def test_analyze_reliable_news(mock_scrape, client):
         assert "details" in criteria[crit]
         assert 0 <= criteria[crit]["score"] <= 100
 
-@patch("app.routes.scraper_service.scrape")
+@patch("backend.routes.scraper_service.scrape")
 def test_analyze_fake_news(mock_scrape, client):
     """Testa fluxo de análise para notícia alarmista / sensacionalista (< 50)."""
     mock_scrape.return_value = {
@@ -132,7 +136,7 @@ def test_real_linearsvc_model_prediction(client):
     assert reload_res.get_json()["custom_ml_model_loaded"] is True
 
     # 1. Teste de notícia real / confiável com vocabulário factual
-    with patch("app.routes.scraper_service.scrape") as mock_scrape:
+    with patch("backend.routes.scraper_service.scrape") as mock_scrape:
         mock_scrape.return_value = {
             "url": "https://g1.globo.com/saude/pesquisa",
             "domain": "g1.globo.com",
@@ -160,7 +164,7 @@ def test_real_linearsvc_model_prediction(client):
         assert data["verdict"] == "confiavel"
 
     # 2. Teste de fake news com vocabulário típico da base FakeRecogna
-    with patch("app.routes.scraper_service.scrape") as mock_scrape:
+    with patch("backend.routes.scraper_service.scrape") as mock_scrape:
         mock_scrape.return_value = {
             "url": "http://site-suspeito.xyz/bomba",
             "domain": "site-suspeito.xyz",

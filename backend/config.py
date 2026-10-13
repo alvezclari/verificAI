@@ -11,7 +11,16 @@ class Config:
     # ML Models paths
     MODELS_DIR = MODELS_DIR
     MODEL_PATH = MODELS_DIR / "model.pkl"
+    # Ativa o ensemble supervisionado somente após a publicação de um bundle completo.
+    DEEP_ENSEMBLE_MANIFEST = MODELS_DIR / "mdeberta-ensemble" / "manifest.json"
+    MODEL_BACKEND = os.getenv("MODEL_BACKEND", "ensemble" if DEEP_ENSEMBLE_MANIFEST.exists() else "calibrated")
+    CLASSIFIER_PATH = Path(os.getenv("CLASSIFIER_PATH", str(MODELS_DIR / "classificador.joblib")))
     VECTORIZER_PATH = MODELS_DIR / "vectorizer.pkl"
+    ENSEMBLE_MANIFEST = Path(os.getenv("ENSEMBLE_MANIFEST", str(DEEP_ENSEMBLE_MANIFEST if DEEP_ENSEMBLE_MANIFEST.exists() else MODELS_DIR / "ensemble" / "manifest.json")))
+    ENSEMBLE_ENABLED = os.getenv("ENSEMBLE_ENABLED", "true").lower() in ("true", "1")
+    TRANSFORMER_DEVICE = os.getenv("TRANSFORMER_DEVICE", "auto")
+    # Convenções dos artefatos legados: SVC 0=real; exemplo LogReg 1=real.
+    PROBABILISTIC_RELIABLE_CLASS = int(os.getenv("PROBABILISTIC_RELIABLE_CLASS", "1"))
     
     @classmethod
     def get_model_path(cls):

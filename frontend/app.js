@@ -49,62 +49,111 @@ async function analyzeNews(url) {
 }
 
 function renderResults(data) {
-  const host = data.metadata?.domain || new URL(data.url).hostname.replace(/^www\./, "");
-  const total = Math.round(data.confidence_score);
+  const host = data.metadata?.domain || new URL(data.url).hostname;
+  const total = Number(data.confidence_score);
+  const details = data.ml_details || {};
+  const percentage = (value) => fmt((value * 100).toFixed(2)) + "%";
+  const verdictColor = data.faixa
+    ? { verdadeira: "var(--green)", inconclusiva: "var(--amber)", falsa: "var(--red)" }[data.faixa]
+    : color(total);
 
-  // Extrai pontuações e descrições dos 5 critérios a partir da resposta da API
-  const s = CRIT.map((c) => Math.round(data.criteria?.[c.key]?.score ?? 50));
-  const descs = CRIT.map((c) => data.criteria?.[c.key]?.details || c.defaultD);
+  $("rows").replaceChildren();
+  CRIT.forEach((criterion) => {
+    const signal = data.criteria?.[criterion.key];
+    const score = Math.round(signal?.score ?? 50);
+    const row = document.createElement("div");
+    row.className = "row";
+    const top = document.createElement("div");
+    top.className = "top";
+    const label = document.createElement("b");
+    label.textContent = criterion.key === "corroboracao" ? "Linguagem e sensacionalismo" : criterion.n;
+    const value = document.createElement("b");
+    value.textContent = score;
+    top.append(label, value);
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("div");
+    fill.dataset.w = score;
+    fill.style.background = color(score);
+    bar.append(fill);
+    const description = document.createElement("div");
+    description.className = "desc";
+    description.textContent = signal?.details || criterion.defaultD;
+    row.append(top, bar, description);
+    $("rows").append(row);
+  });
 
-  // Renderiza as barras dos critérios
-  $("rows").innerHTML = CRIT.map((c, i) => `
-    <div class="row">
-      <div class="top">
-        <span><b>${c.n}</b> <i>· peso ${fmt(c.w)}%</i></span>
-        <b>${s[i]}</b>
-      </div>
-      <div class="bar">
-        <div data-w="${s[i]}" style="background:${color(s[i])}"></div>
-      </div>
-      <div class="desc">${descs[i]}</div>
-    </div>
-  `).join("");
+  $("probabilities").textContent = details.probabilities
+    ? `Classe falsa: ${percentage(details.probabilities.fake)} · Classe confiável: ${percentage(details.probabilities.confiavel)}`
+    : `Score do modelo: ${fmt(total.toFixed(1))} de 100.`;
+  $("components").replaceChildren();
+  if (details.component_probabilities) {
+    [["lexical", "TF-IDF + LogReg"], ["transformer", "mDeBERTa"]].forEach(([key, label]) => {
+      const probability = details.component_probabilities[key];
+      if (!probability) return;
+      const line = document.createElement("p");
+      const weight = details.weights?.[key];
+      line.textContent = `${label}: P(falsa) ${percentage(probability.fake)}${weight == null ? "" : ` · peso ${percentage(weight)}`}`;
+      $("components").append(line);
+    });
+  }
+  const limits = data.thresholds;
+  $("thresholds").textContent = limits
+    ? `P(falsa) até ${percentage(limits.verdadeira_max)}: provavelmente verdadeira; acima disso até ${percentage(limits.inconclusiva_max)}: inconclusiva; acima: possível desinformação.`
+    : "Resultado segundo o modelo selecionado na API.";
+  $("model-info").textContent = [
+    details.model_type,
+    details.metodo_calibracao ? `Calibração: ${{sigmoid: "sigmoide", temperature_on_reserved_calibration_split: "temperatura do ensemble", sigmoid_on_reserved_calibration_split: "sigmoide do ensemble"}[details.metodo_calibracao] || details.metodo_calibracao}` : "",
+    data.model_version ? `Versão: ${data.model_version}` : "",
+    details.transformer ? `Transformer ativo · limite ${details.transformer.max_length} tokens` : "",
+    details.transformer?.truncated ? `Texto truncado no ramo semântico: ${details.transformer.used_tokens} de ${details.transformer.input_tokens} tokens` : "",
+    details.fator_texto_curto < 1 ? (details.transformer ? "Ramo léxico ajustado por texto curto." : "Confiança reduzida por texto curto.") : "",
+  ].filter(Boolean).join(" · ");
 
-  // Ponto mais forte e mais fraco
-  const hi = s.indexOf(Math.max(...s));
-  const lo = s.indexOf(Math.min(...s));
-
-  $("best").innerHTML = `Ponto mais forte: <b>${CRIT[hi].n}</b> (${s[hi]}). ${descs[hi]}`;
-  $("worst").innerHTML = `Ponto mais fraco: <b>${CRIT[lo].n}</b> (${s[lo]}). ${descs[lo]}`;
-
-  // Síntese / Terceiro card
-  if (data.summary) {
-    $("unc").textContent = data.summary;
+  const evaluation = data.model_evaluation;
+  $("metrics").replaceChildren();
+  if (evaluation) {
+    const test = evaluation.splits?.test;
+    const calibration = evaluation.calibration_oof?.[details.metodo_calibracao];
+    const metrics = [
+      ["F1 macro (validação cruzada no treino)", evaluation.f1_macro_cv_train == null ? null : percentage(evaluation.f1_macro_cv_train)],
+      ["Log loss (calibração OOF)", calibration?.log_loss?.toFixed(4)],
+      ["Brier score (calibração OOF)", calibration?.brier?.toFixed(4)],
+      ["Protocolo", evaluation.protocol?.startsWith("experimental") ? "Experimental, com avaliação reservada" : evaluation.protocol],
+      ["F1 macro (teste do ensemble)", test?.ensemble ? percentage(test.ensemble.f1_macro) : null],
+      ["F1 macro (teste do mDeBERTa)", test?.transformer ? percentage(test.transformer.f1_macro) : null],
+      ["Log loss (teste do ensemble)", test?.ensemble?.log_loss?.toFixed(4)],
+      ["Brier score (teste do ensemble)", test?.ensemble?.brier_score?.toFixed(4)],
+    ];
+    metrics.forEach(([label, value]) => {
+      if (value == null) return;
+      const line = document.createElement("p");
+      line.textContent = `${label}: ${value}`;
+      $("metrics").append(line);
+    });
   } else {
-    $("unc").textContent = s[2] < 40
-      ? "Poucas fontes independentes confirmaram o fato até agora."
-      : "Verifique por conta própria os dados citados na matéria.";
+    $("metrics").textContent = "Métricas não informadas pelo artefato selecionado.";
   }
 
-  // Veredito geral
-  const v = $("verdict");
-  v.textContent = data.verdict_label || (total >= 50 ? "Confiável" : "Desconfiável / Suspeita de Fake News");
-  v.style.color = color(total);
-
-  // Metadados
-  const authorInfo = data.metadata?.author ? ` · ${data.metadata.author}` : "";
-  const mlInfo = data.ml_details ? ` · Modelo: ${data.ml_details.model_type}` : "";
-  $("meta").textContent = `${host}${authorInfo}${mlInfo}`;
-
-  // Transição de tela
+  const explanation = details.explicacao;
+  const terms = (items) => items?.length
+    ? items.map((item) => item.termo).join(", ")
+    : "Nenhum termo destacado.";
+  $("best").textContent = terms(explanation?.sustenta);
+  $("worst").textContent = terms(explanation?.enfraquece);
+  $("unc").textContent = [data.summary,
+    explanation?.scope === "lexical_component_only" ? "Os termos destacados explicam apenas o ramo TF-IDF + LogReg." : "",
+    ...(explanation?.limitacoes || [])].filter(Boolean).join(" ");
+  const verdict = $("verdict");
+  verdict.textContent = data.verdict_label;
+  verdict.style.color = verdictColor;
+  $("meta").textContent = [host, data.metadata?.author].filter(Boolean).join(" · ");
   $("home").style.display = "none";
   $("result").style.display = "block";
+  $("score").textContent = fmt(total.toFixed(1));
   window.scrollTo(0, 0);
-
-  // Atualização do score e animação
-  $("score").textContent = total;
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    document.querySelectorAll(".bar div").forEach((b) => (b.style.width = b.dataset.w + "%"));
+    document.querySelectorAll(".bar div").forEach((bar) => { bar.style.width = bar.dataset.w + "%"; });
     $("arc").setAttribute("stroke-dasharray", `${total} 100`);
   }));
 }

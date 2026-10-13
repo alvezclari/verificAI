@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VerificAI — API local</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:70vh;overflow:auto}a{color:var(--teal)}.api-card{margin:24px 0}table{border-spacing:12px;text-align:left}</style>
+</head>
+<body>
+  <header><a class="brand" href="/">VerificAI</a></header>
+  <main>
+    <h1>API de análise de notícias</h1>
+    <p>Envie uma URL pública para extrair o texto e obter a classificação do modelo ativo.
+       No ensemble, a resposta inclui as probabilidades da LogReg e do mDeBERTa.</p>
+    <p><a href="/api/health">Estado do modelo</a> · <a href="/api/openapi.json">Contrato OpenAPI</a></p>
+    <table>
+      <tr><th>Método</th><th>Endpoint</th><th>Resultado</th></tr>
+      <tr><td>GET</td><td>/api/health</td><td>Modelo ativo, versão e erros de carregamento.</td></tr>
+      <tr><td>POST</td><td>/api/analyze</td><td>Recebe {"url":"https://..."}.</td></tr>
+      <tr><td>POST</td><td>/api/reload-model</td><td>Recarrega os arquivos do modelo selecionado.</td></tr>
+    </table>
+    <div class="card api-card">
+      <h2>Testar uma URL</h2>
+      <form id="api-form">
+        <input id="api-url" type="url" required placeholder="https://exemplo.com.br/noticia" aria-label="URL da notícia">
+        <button type="submit">Enviar</button>
+      </form>
+      <p id="api-status" role="status"></p>
+      <pre id="api-response">A resposta JSON aparecerá aqui.</pre>
+    </div>
+    <p>O score é 100 × (1 − prob_fake). As faixas do artefato atual usam P(falsa): até 35%,
+       provavelmente verdadeira; acima de 35% até 65%, inconclusiva; acima de 65%, possível desinformação.</p>
+    <p>As métricas de treinamento descrevem o corpus do modelo. Os sinais auxiliares não alteram o score calibrado.</p>
+  </main>
+  <script>
+    document.getElementById("api-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector("button");
+      button.disabled = true;
+      document.getElementById("api-status").textContent = "Analisando...";
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST", headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({url: document.getElementById("api-url").value.trim()}),
+        });
+        document.getElementById("api-status").textContent = `HTTP ${response.status}`;
+        document.getElementById("api-response").textContent = JSON.stringify(await response.json(), null, 2);
+      } catch (error) {
+        document.getElementById("api-status").textContent = error.message;
+      } finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>
