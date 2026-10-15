@@ -60,6 +60,10 @@ def main():
                 or data["faixa"] not in {"verdadeira", "inconclusiva", "falsa"}
                 or data["metadata"]["word_count"] < 40):
             raise RuntimeError("Resposta de classificação incompleta ou inválida.")
+        if os.getenv("XAI_ENABLED", "true").lower() in ("true", "1"):
+            local = data["ml_details"]["explicacao"].get("local", {})
+            if local.get("status") not in {"ok", "no_effect", "insufficient_text"}:
+                raise RuntimeError("Explicação local indisponível no teste de inferência.")
     print(json.dumps({
         "status": "ok", "model_version": data["model_version"],
         "device": "cpu", "interface": "ok", "api": "ok", "extraction": "ok",

@@ -67,7 +67,10 @@ def test_url_html_extraction_and_real_model_match_original_motor(client, service
     assert data["prob_fake"] == expected["prob_fake"]
     assert data["confidence_score"] == pytest.approx((1 - expected["prob_fake"]) * 100)
     assert data["faixa"] == expected["faixa"]
-    assert data["ml_details"]["explicacao"] == expected["explicacao"]
+    explanation = data["ml_details"]["explicacao"]
+    assert {key: value for key, value in explanation.items() if key != "local"} == expected["explicacao"]
+    assert explanation["local"]["scope"] == "final_prediction"
+    assert explanation["local"]["status"] in ("ok", "no_effect")
     assert data["model_version"] == service.calibrated.version
     assert data["score_method"] == "calibrated_model"
     assert not data["criteria_affect_score"]
@@ -129,6 +132,29 @@ def test_short_text_adjustment_is_preserved(service):
     assert data["ml_details"]["fator_texto_curto"] == pytest.approx(2 / 33)
     assert data["prob_fake"] == expected["prob_fake"]
     assert data["faixa"] == "inconclusiva"
+
+
+def test_xai_failure_keeps_original_prediction(client, service, monkeypatch):
+    monkeypatch.setattr("backend.routes.scraper_service.scrape", lambda url: {"title": TITLE, "text": BODY})
+    def fail(*args):
+        raise RuntimeError("Falha apenas no explicador")
+    monkeypatch.setattr("backend.services.explainer.explain_prediction", fail)
+    expected = service.calibrated.motor.prever(TITLE, BODY)
+    response = client.post("/api/analyze", json={"url": URL})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["prob_fake"] == expected["prob_fake"] and data["faixa"] == expected["faixa"]
+    assert data["ml_details"]["explicacao"]["local"]["status"] == "unavailable"
+    assert not data["ml_details"]["explicacao"]["local"]["trechos"]
+
+
+def test_xai_can_be_disabled_without_changing_original_explanation(client, service, monkeypatch):
+    monkeypatch.setattr(Config, "XAI_ENABLED", False)
+    monkeypatch.setattr("backend.routes.scraper_service.scrape", lambda url: {"title": TITLE, "text": BODY})
+    expected = service.calibrated.motor.prever(TITLE, BODY)
+    data = client.post("/api/analyze", json={"url": URL}).get_json()
+    assert data["ml_details"]["explicacao"] == expected["explicacao"]
+    assert data["prob_fake"] == expected["prob_fake"]
 
 
 def test_inference_failure_returns_503(client, service, monkeypatch):

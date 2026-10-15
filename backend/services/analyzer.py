@@ -202,6 +202,22 @@ class NewsAnalyzerService:
             verdict = "desconfiavel"
             verdict_label = "Não Confiável / Suspeita de Fake News"
 
+        # A explicação usa a mesma referência capturada para a previsão original.
+        if has_bands and Config.XAI_ENABLED:
+            from backend.services.explainer import explain_prediction
+            try:
+                local_explanation = explain_prediction(
+                    predictor, title, text, ml_details, Config.XAI_MAX_EVALUATIONS,
+                )
+            except Exception:
+                logger.warning("Falha na explicação local; classificação preservada.", exc_info=True)
+                local_explanation = {
+                    "metodo": "sentence_deletion", "scope": "final_prediction", "status": "unavailable",
+                    "resumo": "A classificação foi calculada, mas a comparação por trechos ficou indisponível nesta análise.",
+                    "trechos": [], "avaliacoes": [], "limitacoes": [],
+                }
+            ml_details = {**ml_details, "explicacao": {**ml_details.get("explicacao", {}), "local": local_explanation}}
+
         # 5. Síntese textual da análise
         if has_bands:
             summary = (

@@ -1,5 +1,9 @@
 # API local com o ensemble NLP
 
+A resposta também pode incluir `ml_details.explicacao.local`, uma comparação
+por remoção de trechos sobre a probabilidade final. Consulte o
+[guia de explicabilidade](explicabilidade.md) para campos, configuração e limites.
+
 O fluxo local atual é URL → extração do título/corpo → classificador calibrado
 + mDeBERTa-v3 → probabilidade combinada, faixa, contribuições e métricas.
 O [guia do mDeBERTa](mdeberta.md) descreve dados, fine-tuning e avaliação.

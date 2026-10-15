@@ -48,10 +48,59 @@ async function analyzeNews(url) {
   }
 }
 
+function renderLocalExplanation(local) {
+  const evidence = $("xai-evidence");
+  const coverage = $("xai-coverage");
+  const limits = $("xai-limits");
+  evidence.replaceChildren();
+  evidence.hidden = true;
+  coverage.textContent = "";
+  coverage.hidden = true;
+  limits.textContent = "";
+  limits.hidden = true;
+  if (!local) return;
+
+  const percentage = (value) => fmt((value * 100).toFixed(1)) + "%";
+  [
+    ["favorece_falsa", "Trechos que aumentaram a suspeita", "xai-fake"],
+    ["favorece_confiavel", "Trechos que favoreceram a confiabilidade", "xai-reliable"],
+  ].forEach(([direction, label, className]) => {
+    const items = (local.trechos || []).filter((item) => item.direcao === direction).slice(0, 3);
+    if (!items.length) return;
+    const group = document.createElement("section");
+    group.className = `xai-group ${className}`;
+    const heading = document.createElement("h3");
+    heading.textContent = label;
+    group.append(heading);
+    items.forEach((item) => {
+      const figure = document.createElement("figure");
+      const quote = document.createElement("blockquote");
+      quote.textContent = item.texto;
+      const effect = document.createElement("figcaption");
+      effect.textContent = `${item.origem === "titulo" ? "Título" : "Corpo da notícia"} · Ao retirar este trecho, a estimativa da classe falsa passou de ${percentage(local.prob_fake_original)} para ${percentage(item.prob_fake_sem_trecho)}.`;
+      figure.append(quote, effect);
+      group.append(figure);
+    });
+    evidence.append(group);
+  });
+  evidence.hidden = !evidence.children.length;
+  if (local.cobertura) {
+    const info = local.cobertura;
+    coverage.textContent = `Comparados ${info.trechos_avaliados} de ${info.trechos_identificados} trechos identificados.${info.parcial ? " A explicação cobre uma amostra; outros trechos também podem influenciar." : ""}`;
+    coverage.hidden = false;
+  }
+  if (local.limitacoes?.length) {
+    limits.textContent = local.limitacoes.join(" ");
+    limits.hidden = false;
+  }
+}
+
 function renderResults(data) {
   const host = data.metadata?.domain || new URL(data.url).hostname;
   const total = Number(data.confidence_score);
   const details = data.ml_details || {};
+  $("technical-info").open = false;
+  $("auxiliary-signals").open = false;
   const percentage = (value) => fmt((value * 100).toFixed(2)) + "%";
   const verdictColor = data.faixa
     ? { verdadeira: "var(--green)", inconclusiva: "var(--amber)", falsa: "var(--red)" }[data.faixa]
@@ -136,13 +185,18 @@ function renderResults(data) {
   }
 
   const explanation = details.explicacao;
-  const terms = (items) => items?.length
-    ? items.map((item) => item.termo).join(", ")
-    : "Nenhum termo destacado.";
-  $("best").textContent = terms(explanation?.sustenta);
-  $("worst").textContent = terms(explanation?.enfraquece);
-  $("unc").textContent = [data.summary,
-    explanation?.scope === "lexical_component_only" ? "Os termos destacados explicam apenas o ramo TF-IDF + LogReg." : "",
+  const band = data.faixa || {
+    confiavel: "verdadeira", inconclusiva: "inconclusiva", desconfiavel: "falsa",
+  }[data.verdict];
+  const local = explanation?.local;
+  $("unc").textContent = local?.resumo || {
+    verdadeira: "O texto apresenta sinais favoráveis à confiabilidade. Use a estimativa como apoio à leitura e confira a origem e as informações da notícia.",
+    inconclusiva: "Os sinais do texto não permitem uma conclusão clara sobre a confiabilidade. Busque outras fontes e mais contexto antes de compartilhar.",
+    falsa: "O texto apresenta sinais que reduzem a estimativa de confiabilidade. Verifique as alegações em outras fontes antes de compartilhar.",
+  }[band] || "A estimativa resume os sinais encontrados no texto. Confira a origem e compare as informações com outras fontes antes de compartilhar.";
+  renderLocalExplanation(local);
+  $("explanation-details").textContent = [data.summary,
+    explanation?.scope === "lexical_component_only" ? "As explicações lexicais se referem apenas ao ramo TF-IDF + LogReg." : "",
     ...(explanation?.limitacoes || [])].filter(Boolean).join(" ");
   const verdict = $("verdict");
   verdict.textContent = data.verdict_label;

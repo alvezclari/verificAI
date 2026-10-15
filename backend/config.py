@@ -19,6 +19,8 @@ class Config:
     ENSEMBLE_MANIFEST = Path(os.getenv("ENSEMBLE_MANIFEST", str(DEEP_ENSEMBLE_MANIFEST if DEEP_ENSEMBLE_MANIFEST.exists() else MODELS_DIR / "ensemble" / "manifest.json")))
     ENSEMBLE_ENABLED = os.getenv("ENSEMBLE_ENABLED", "true").lower() in ("true", "1")
     TRANSFORMER_DEVICE = os.getenv("TRANSFORMER_DEVICE", "auto")
+    XAI_ENABLED = os.getenv("XAI_ENABLED", "true").lower() in ("true", "1")
+    XAI_MAX_EVALUATIONS = int(os.getenv("XAI_MAX_EVALUATIONS", "8"))
     # Convenções dos artefatos legados: SVC 0=real; exemplo LogReg 1=real.
     PROBABILISTIC_RELIABLE_CLASS = int(os.getenv("PROBABILISTIC_RELIABLE_CLASS", "1"))
     

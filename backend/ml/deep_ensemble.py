@@ -77,6 +77,23 @@ class CalibratedDeepEnsemble:
         lexical, semantic = self.component_probabilities(texts)
         return calibrated_blend(lexical, semantic, self.weights, self.temperature, self.bias)
 
+    def predict_documents_proba(self, documents):
+        """Avalia perturbações com a calibração final e lotes pequenos em memória."""
+        documents = list(documents)
+        if not documents:
+            raise ValueError("Informe documentos não vazios.")
+        results = []
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for start in range(0, len(documents), 2):
+                batch = documents[start:start + 2]
+                texts = [f"{title or ''}\n\n{body or ''}".strip() for title, body in batch]
+                lexical = pool.submit(self.lexical.predict_documents_proba, batch)
+                semantic = pool.submit(self.semantic.predict_proba, texts)
+                results.append(calibrated_blend(
+                    lexical.result(), semantic.result(), self.weights, self.temperature, self.bias,
+                ))
+        return np.concatenate(results)
+
     def predict_document(self, title, body):
         content = f"{title or ''}\n\n{body or ''}".strip()
         with ThreadPoolExecutor(max_workers=2) as pool:

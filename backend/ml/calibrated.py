@@ -40,6 +40,17 @@ class CalibratedClassifier:
             results.append(np.column_stack((1 - reliable, reliable)))
         return validate_probabilities(np.concatenate(results), len(texts))
 
+    def predict_documents_proba(self, documents):
+        """Probabilidades por título/corpo, com as mesmas regras de prever()."""
+        from ml.preprocessing import preparar_texto
+        from backend.ml.ensemble import validate_probabilities
+
+        prepared = [preparar_texto(title, body) for title, body in documents]
+        if not prepared or any(not text for text in prepared):
+            raise ValueError("Informe documentos não vazios.")
+        reliable = self.motor.artefato.prever_textos(prepared)["final"]
+        return validate_probabilities(np.column_stack((1 - reliable, reliable)), len(prepared))
+
     def predict_document(self, title, body):
         try:
             result = self.motor.prever(title, body)

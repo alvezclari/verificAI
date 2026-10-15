@@ -8,7 +8,7 @@ para notícias**, executados localmente.
 
 A interface apresenta probabilidades, uma pontuação de confiabilidade, as faixas
 **provavelmente verdadeira**, **inconclusiva** ou **possível desinformação**,
-termos que contribuíram para o ramo léxico e cinco sinais heurísticos auxiliares.
+trechos que influenciaram a previsão final e cinco sinais heurísticos auxiliares.
 
 **A aplicação analisa padrões textuais; não confirma alegações em fontes
 independentes.** Os modelos são experimentais e podem errar. Os sinais auxiliares
@@ -155,7 +155,9 @@ registrados; não medem o acerto de uma URL individual.
 - O conteúdo extraído ainda não é armazenado para reprodução da análise.
 - O bundle está marcado como `production_ready=false`.
 
-Consulte o [relatório](docs/mdeberta.md) e a [ficha dos modelos](models/README.md).
+Consulte a [documentação geral do projeto](docs/projeto-geral.md),
+a [documentação das métricas de avaliação](docs/metricas-avaliacao.md),
+o [relatório](docs/mdeberta.md) e a [ficha dos modelos](models/README.md).
 
 ## Organização
 
@@ -202,6 +204,12 @@ Detalhes dos campos e erros: [guia da API](docs/api-local.md).
 | `APP_HOST` | Endereço; padrão `127.0.0.1` |
 | `PORT` | Padrão `5000`; exemplos deste README usam `5001` |
 | `FLASK_DEBUG` | Desativado por padrão na execução de `run.py` |
+| `XAI_ENABLED` | `true` por padrão; habilita o resumo por comparação de trechos |
+| `XAI_MAX_EVALUATIONS` | Até 8 comparações por padrão; configurável entre 1 e 16 |
+
+A aba **Como interpretar** usa os efeitos medidos ao retirar trechos da notícia
+da entrada dos modelos. Veja o [guia de explicabilidade](docs/explicabilidade.md)
+para o método, o contrato da API, a latência adicional e as limitações.
 
 Há um exemplo em [.env.example](.env.example). A aplicação **não carrega `.env`
 automaticamente**. Em macOS/Linux:

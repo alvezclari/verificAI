@@ -15,7 +15,7 @@
 <main>
   <section id="home" class="hero">
     <h1>Antes de compartilhar,<br><span>observe os sinais.</span></h1>
-    <p>Cole o link de uma notícia. O modelo analisa o texto e apresenta uma estimativa, a faixa do resultado e os termos que contribuíram para a classificação.</p>
+    <p>Cole o link de uma notícia e veja uma estimativa de confiabilidade, como interpretar o resultado e os sinais auxiliares encontrados no texto.</p>
     <form id="form" novalidate>
       <input id="url" type="url" placeholder="https://exemplo.com.br/noticia" aria-label="Link da notícia" autocomplete="off">
       <button type="submit">Verificar</button>
@@ -27,7 +27,7 @@
   <section id="result">
     <div class="grid">
       <div class="card gauge">
-        <div class="sub" style="text-align:left;letter-spacing:.08em">ESTIMATIVA TEXTUAL</div>
+        <div class="sub" style="text-align:left;letter-spacing:.08em">ESTIMATIVA DE CONFIABILIDADE</div>
         <svg viewBox="0 0 340 200" aria-hidden="true">
           <path d="M40 180 A130 130 0 0 1 300 180" fill="none" stroke="#1c2c4b" stroke-width="30" stroke-linecap="round"/>
           <defs><linearGradient id="g"><stop offset="0" stop-color="#e5655b"/><stop offset="1" stop-color="#ef9a5a"/></linearGradient></defs>
@@ -38,26 +38,37 @@
         <p class="verdict" id="verdict"></p>
         <div class="meta" id="meta"></div>
       </div>
-      <div class="card crit">
-        <h2>Resultado do modelo</h2>
-        <p id="probabilities"></p>
-        <div id="components"></div>
-        <p class="desc" id="thresholds"></p>
-        <p class="desc" id="model-info"></p>
-        <h3>Métricas de avaliação</h3>
-        <div id="metrics"></div>
-        <p class="desc">Essas métricas descrevem os conjuntos do experimento e não medem o acerto desta notícia.</p>
+      <div class="card interpretation">
+        <h2>Como interpretar</h2>
+        <p id="unc"></p>
+        <div id="xai-evidence" class="xai-evidence" hidden></div>
+        <p id="xai-coverage" class="desc" hidden></p>
+        <p id="xai-limits" class="desc" hidden></p>
+        <p class="desc">Quanto maior a estimativa, mais o texto apresenta padrões associados a notícias confiáveis. Essa análise não confirma os fatos; confira as fontes antes de compartilhar.</p>
       </div>
     </div>
-    <div class="three">
-      <div class="card"><h3 style="color:var(--green)">Termos que favorecem</h3><p id="best"></p></div>
-      <div class="card"><h3 style="color:var(--amber)">Termos que desfavorecem</h3><p id="worst"></p></div>
-      <div class="card"><h3 style="color:var(--teal)">Como interpretar</h3><p id="unc"></p></div>
-    </div>
-    <details class="card signals">
+    <details class="card signals" id="auxiliary-signals">
       <summary>Sinais auxiliares do texto</summary>
-      <p class="desc">Heurísticas informativas. No classificador calibrado, não alteram a probabilidade nem verificam fatos em fontes externas.</p>
+      <p class="desc">São observações sobre o texto que ajudam na leitura e não confirmam os fatos da notícia.</p>
       <div id="rows"></div>
+    </details>
+    <details class="card technical" id="technical-info">
+      <summary>Informações técnicas</summary>
+      <div class="technical-grid">
+        <div>
+          <h2>Resultado do modelo</h2>
+          <p id="probabilities"></p>
+          <div id="components"></div>
+          <p class="desc" id="thresholds"></p>
+          <p class="desc" id="model-info"></p>
+          <p class="desc" id="explanation-details"></p>
+        </div>
+        <div>
+          <h2>Métricas de avaliação</h2>
+          <div id="metrics"></div>
+          <p class="desc">Essas métricas descrevem os conjuntos do experimento e não medem o acerto desta notícia.</p>
+        </div>
+      </div>
     </details>
     <button class="back" id="back" type="button">Verificar outro link</button>
   </section>

@@ -149,6 +149,10 @@ def test_real_imported_model_and_supervised_transformer_bundle(tmp_path, monkeyp
     assert result["explicacao"]["scope"] == "lexical_component_only"
     assert sum(result["probabilities"].values()) == pytest.approx(1)
     assert np.isfinite(ensemble.predict_proba([text, "boato secreto"])).all()
+    documents = [("", text), ("pesquisa", "boato secreto"), ("", "pesquisa oficial boato")]
+    batched = ensemble.predict_documents_proba(documents)
+    individual = [ensemble.predict_document(title, body)["prob_fake"] for title, body in documents]
+    np.testing.assert_allclose(batched[:, 0], individual, rtol=1e-6, atol=1e-7)
     monkeypatch.setattr(Config, "MODEL_BACKEND", "ensemble")
     monkeypatch.setattr(Config, "ENSEMBLE_MANIFEST", path)
     monkeypatch.setattr(Config, "TRANSFORMER_DEVICE", "cpu")
