@@ -156,6 +156,7 @@ registrados; não medem o acerto de uma URL individual.
 - O bundle está marcado como `production_ready=false`.
 
 Consulte a [documentação geral do projeto](docs/projeto-geral.md),
+a [versão consolidada do relatório técnico do modelo](docs/relatorio-tecnico-modelo.md),
 a [documentação das métricas de avaliação](docs/metricas-avaliacao.md),
 o [relatório](docs/mdeberta.md) e a [ficha dos modelos](models/README.md).
 
