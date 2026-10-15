@@ -1,3 +1,11 @@
 # Preserva os bytes dos artefatos e do corpus usados nos hashes de procedência.
 *.joblib -text
 banco_fake.csv -text whitespace=-blank-at-eol
+# Evita alterar hashes no Windows com core.autocrlf=true.
+ml/preprocessing.py text eol=lf
+models/mdeberta-ensemble/** -text
+
+# Pesos e arquivos grandes do bundle publicado; JSONs de configuração ficam legíveis.
+models/mdeberta-ensemble/transformer/model.safetensors filter=lfs diff=lfs merge=lfs -text
+models/mdeberta-ensemble/transformer/spm.model filter=lfs diff=lfs merge=lfs -text
+models/mdeberta-ensemble/transformer/tokenizer.json filter=lfs diff=lfs merge=lfs -text

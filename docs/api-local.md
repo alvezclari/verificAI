@@ -1,4 +1,4 @@
-# API local com o classificador calibrado
+# API local com o ensemble NLP
 
 O fluxo local atual é URL → extração do título/corpo → classificador calibrado
 + mDeBERTa-v3 → probabilidade combinada, faixa, contribuições e métricas.
@@ -11,17 +11,20 @@ Na raiz do repositório, com Python 3.14:
 ```bash
 python3.14 -m venv .venv-classificador
 source .venv-classificador/bin/activate
-python -m pip install -r requirements-lock.txt
-python run.py
+python -m pip install -r requirements-inference.txt
+git lfs pull
+python scripts/check_model.py --verify-hashes
+PORT=5001 MODEL_BACKEND=ensemble python run.py
 ```
 
-Abra [a aplicação](http://127.0.0.1:5000/) para inserir a URL de uma notícia ou
-[a documentação interativa](http://127.0.0.1:5000/docs) para consultar a resposta JSON.
-O servidor local usa `127.0.0.1:5000`, sem debug por padrão. `PORT`, `APP_HOST` e
-`FLASK_DEBUG` permitem ajustar a execução.
+Abra [a aplicação](http://127.0.0.1:5001/) para inserir a URL de uma notícia ou
+[a documentação interativa](http://127.0.0.1:5001/docs) para consultar a resposta JSON.
+O comando acima usa `127.0.0.1:5001`, sem debug. Sem `PORT`, `run.py` usa 5000.
+`PORT`, `APP_HOST` e `FLASK_DEBUG` permitem ajustar a execução.
 
-Ao clonar em outra máquina, restaure também o pacote de pesos/dados, conforme o
-[guia de continuação](continuacao-em-outro-ambiente.md), para executar com mDeBERTa.
+O bundle mDeBERTa é distribuído por Git LFS; instale o LFS antes de clonar, conforme
+o [README](../README.md). O [pacote de transferência](continuacao-em-outro-ambiente.md)
+é opcional para dados e histórico MLflow, não para inferência.
 
 O ambiente separado preserva o `.venv` anterior e agora inclui as dependências do Transformer. As versões
 de sklearn, NumPy, SciPy, joblib, pandas e tldextract são as registradas no artefato.
@@ -32,14 +35,16 @@ O motor valida a versão do sklearn e o hash do pré-processamento. Não altere
 
 | Variável | Padrão | Uso |
 |---|---|---|
-| `MODEL_BACKEND` | `ensemble` com bundle completo; caso contrário, `calibrated` | `calibrated`, `legacy` ou `ensemble` |
+| `MODEL_BACKEND` | `ensemble` quando o manifesto existe; caso contrário, `calibrated` | `calibrated`, `legacy` ou `ensemble` |
 | `CLASSIFIER_PATH` | `models/classificador.joblib` | Caminho do artefato calibrado |
 | `ENSEMBLE_MANIFEST` | `models/mdeberta-ensemble/manifest.json` quando presente | Bundle usado com `MODEL_BACKEND=ensemble` |
 | `TRANSFORMER_DEVICE` | `auto` (CUDA/MPS/CPU) | Dispositivo usado no modo ensemble |
 
 O modo `legacy` preserva a seleção antiga do LinearSVC. O modo `ensemble` exige
-bundle completo e dependências semânticas. Na inicialização sem `MODEL_BACKEND` explícito, a presença do bundle completo
-`models/mdeberta-ensemble` seleciona o ensemble. Um processo já iniciado precisa
+bundle completo e dependências semânticas. Na inicialização sem `MODEL_BACKEND`
+explícito, a presença do manifesto em `models/mdeberta-ensemble` seleciona o
+ensemble. O download dos pesos deve ser confirmado com `scripts/check_model.py`.
+Um processo já iniciado precisa
 ser reiniciado para essa seleção automática. Alterações de variáveis exigem reinício;
 `POST /api/reload-model` recarrega os arquivos dentro da configuração já iniciada.
 
@@ -52,9 +57,9 @@ ser reiniciado para essa seleção automática. Alterações de variáveis exige
 - `POST /api/reload-model`: recarrega o modelo; retorna 503 quando falha.
 
 ```bash
-curl http://127.0.0.1:5000/api/health
+curl http://127.0.0.1:5001/api/health
 
-curl -X POST http://127.0.0.1:5000/api/analyze \
+curl -X POST http://127.0.0.1:5001/api/analyze \
   -H 'Content-Type: application/json' \
   -d '{"url":"https://exemplo.com.br/noticia"}'
 ```

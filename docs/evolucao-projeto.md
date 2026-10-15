@@ -1,10 +1,21 @@
 # Evolução do VerificAI: marcos e estado atual
 
-**Atualização:** 13/10/2026
+**Atualização:** 15/10/2026
 
 **Escopo:** baseline, novo classificador calibrado, análise por URL, ensemble e MLOps.
 
 **Referência técnica:** [diagnóstico e guia do ensemble](ensemble.md).
+
+## Preparação para distribuição pelo GitHub — 15/10/2026
+
+O bundle ativo foi preparado para versionamento com Git LFS: pesos, SentencePiece
+e tokenizador serializado usam LFS; configurações, métricas e checksums usam Git.
+O README descreve clone, inferência e limitações; `scripts/check_model.py` detecta
+ponteiros não baixados e verifica integridade. Protótipos anteriores foram reunidos
+em `archive/`. A publicação é feita em `main` e `modularization`, conforme
+[CONTRIBUTING.md](../CONTRIBUTING.md). O roteiro inclui uma instalação limpa
+e `scripts/smoke_test.py` para verificar interface, API, extração e os dois
+modelos reais em CPU, sem downloads durante a inferência.
 
 ## Situação atual
 

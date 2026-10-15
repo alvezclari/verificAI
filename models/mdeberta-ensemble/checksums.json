@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "model_version": "mdeberta-ensemble-20261013T185545",
+  "files": {
+    "classificador.joblib": {
+      "sha256": "a9270ab5507fbcf3298dc1117f3c6806d36b150a791edc7865fd4873fac89064",
+      "size": 2237974
+    },
+    "data_provenance.json": {
+      "sha256": "f38e1788f6bf852b6fc33871335ede9d198d7b915ddb46312de5be3499456a8a",
+      "size": 357021
+    },
+    "manifest.json": {
+      "sha256": "06074e62b51d649111df36d51073b2192c7ddf9e2f720fe49be8bf127dfa8c13",
+      "size": 8021
+    },
+    "transformer/added_tokens.json": {
+      "sha256": "fb697283833d25e2c711f1bc37730ecd8b20f4bd5f015db1d84aefe0adc9155a",
+      "size": 23
+    },
+    "transformer/config.json": {
+      "sha256": "f3e2db11f426546e878daefe9742d400cd95fa5efa4a017ba691de4491c1d72e",
+      "size": 1000
+    },
+    "transformer/model.safetensors": {
+      "sha256": "ed1dec1908cfd4d03baac8f105d2be6319c783c7207d8f1c3f8b4c260fa7ee56",
+      "size": 1115268200
+    },
+    "transformer/special_tokens_map.json": {
+      "sha256": "b2f1b2f15f29a6b6d9d6ea4eca1675d2c231a71477f151d48f79cc83a625ba21",
+      "size": 970
+    },
+    "transformer/spm.model": {
+      "sha256": "13c8d666d62a7bc4ac8f040aab68e942c861f93303156cc28f5c7e885d86d6e3",
+      "size": 4305025
+    },
+    "transformer/tokenizer.json": {
+      "sha256": "fac19ea071eaf45a306b764622c743562e1fd17dfd132b715ce76bb5caee26c8",
+      "size": 16316224
+    },
+    "transformer/tokenizer_config.json": {
+      "sha256": "0e5de9e6d425c4d273bf2ee1d7bbf70412e8966efbe04256e56114488dafd1db",
+      "size": 1286
+    },
+    "transformer/training_metadata.json": {
+      "sha256": "1d32af7541f7611506b264130e24c71ee617de35d1fb9aac9265bd7aeee8c1fd",
+      "size": 602
+    }
+  }
+}

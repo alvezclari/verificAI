@@ -224,5 +224,6 @@ recall da classe falsa de 84,89% no limiar binário, 80,89% na faixa falsa
 
 O artefato continua marcado como experimental e `production_ready=false`.
 
-Para levar esta versão treinada a outra máquina, siga o
-[guia de continuação em outro ambiente](continuacao-em-outro-ambiente.md).
+Para testar esta versão em outra máquina, baixe os pesos com Git LFS e siga o
+[README](../README.md). Para transportar também os dados e o histórico MLflow,
+consulte o [guia de continuação](continuacao-em-outro-ambiente.md).

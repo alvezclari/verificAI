@@ -1,31 +1,69 @@
-# Artefatos dos classificadores
+# Modelos e procedência
 
-`best_linearsvc_model.joblib` e `model.pkl` são os artefatos legados. A API
-prioriza o primeiro quando `MODEL_BACKEND=legacy`.
+O bundle publicado é **`mdeberta-ensemble-20261013T185545`**, em
+`models/mdeberta-ensemble/`. Ele combina o classificador calibrado importado com
+mDeBERTa ajustado para a tarefa binária `0=fake, 1=confiavel`.
 
-`MODEL_BACKEND=calibrated` carrega `classificador.joblib` usando o pacote
-`ml/`, com calibração, ajuste para texto curto e faixas originais. Execute com
-`requirements-classificador.txt`. Veja o [guia da API](../docs/api-local.md).
+## Baixar e conferir
 
-O treinamento novo gera `models/ensemble/lexical.joblib`, `lexical_metadata.json`,
-`transformer/`, `data_provenance.json` e `manifest.json`. O Transformer contém
-pesos, configuração, tokenizador e `training_metadata.json` exportados após
-fine-tuning. O manifesto é criado após avaliar os dois componentes.
+Na raiz do clone, com Git LFS instalado:
 
-O bundle é ignorado pelo Git e registrado no MLflow. Não há pipeline DVC
-preexistente; caso ele seja adotado, versione o diretório inteiro para manter
-os artefatos consistentes. O novo CLI não sobrescreve os arquivos legados.
+```bash
+git lfs install --local
+git lfs pull
+python scripts/check_model.py --verify-hashes
+```
 
-Consulte [treinamento, ativação e convenções de classes](../docs/ensemble.md).
+Não é necessário restaurar MLflow, baixar datasets ou retreinar para executar a
+API. Consulte o [README principal](../README.md).
 
+## Arquivos do bundle
 
-O bundle ativo local é `models/mdeberta-ensemble/`: cópia do classificador
-importado, pesos/tokenizador do mDeBERTa supervisionado, procedência e manifesto
-v2 com pesos e calibração do ensemble. Quando esse manifesto existe, ele é o
-padrão na inicialização sem `MODEL_BACKEND` explícito. Veja o
-[guia do mDeBERTa](../docs/mdeberta.md).
+| Arquivo | Finalidade | Distribuição |
+|---|---|---|
+| `manifest.json` | Classes, pesos, calibração, faixas e métricas | Git |
+| `checksums.json` | Tamanhos e SHA-256 dos 11 arquivos necessários | Git |
+| `data_provenance.json` | Partições e procedência do experimento | Git |
+| `classificador.joblib` | Classificador calibrado alinhado ao manifesto | Git |
+| `transformer/model.safetensors` | Pesos supervisionados, aproximadamente 1,04 GiB | Git LFS |
+| `transformer/spm.model` | Vocabulário SentencePiece | Git LFS |
+| `transformer/tokenizer.json` | Tokenizador serializado | Git LFS |
+| `transformer/config.json` | Arquitetura e mapeamento de classes | Git |
+| Demais JSONs em `transformer/` | Tokens especiais e metadados do treino/tokenizador | Git |
 
-Para restaurar esses pesos em outro ambiente, use o [guia de transferência](../docs/continuacao-em-outro-ambiente.md).
-O script `scripts/transfer_artifacts.py` inclui o bundle completo, dados e
-MLflow, com checksums. Os arquivos em `exports/` são transferidos separadamente
-do repositório; não são enviados pelo Git.
+`training_args.bin` não é necessário para inferência e continua local. Os outros
+experimentos em `models/ensemble/` e `models/mdeberta-*/` continuam ignorados.
+Ao substituir o bundle, atualize o inventário junto aos pesos e metadados.
+
+## Origem do modelo NLP
+
+- Checkpoint inicial: [MoritzLaurer/mDeBERTa-v3-base-mnli-xnli](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-mnli-xnli).
+- Revisão: `8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c`.
+- Ajuste supervisionado para notícias, cabeça binária e 10 camadas congeladas.
+- Corpus: 8.295 registros do [Fake.Br](https://github.com/roneysco/Fake.br-Corpus)
+  e do `banco_fake.csv`; os rótulos falsos deste último foram confirmados pelo responsável.
+- Run de fine-tuning: `658901685b1e42f88a0957f73a8e12e9`.
+- Run de seleção/calibração: `8ab1f341b2604e19a894cfd209ca20e2`.
+- Limite semântico: primeiros 256 tokens.
+
+A ficha do checkpoint inicial informa licença MIT. Preserve as atribuições e
+condições dos modelos/datasets de origem; isso não define uma licença geral
+para todo o código e dados deste repositório.
+
+## Avaliação e uso previsto
+
+No teste de 1.659 registros, o ensemble obteve F1 macro **0,8814** e ROC AUC
+**0,9606**. A versão é experimental, `production_ready=false`, para testes locais
+e pesquisa. Não verifica fatos em fontes externas. As explicações de termos
+representam somente o ramo léxico. Veja o [relatório](../docs/mdeberta.md).
+
+## Outros artefatos
+
+| Arquivo | Uso |
+|---|---|
+| `models/classificador.joblib` | Modo `calibrated`; exige sklearn 1.8.0 |
+| `models/best_linearsvc_model.joblib` | Baseline priorizado em `legacy` |
+| `models/model.pkl` | Artefato legado preservado |
+
+O pacote `ml/` contém o motor do artefato calibrado. O hash de seu pré-processamento
+é validado no carregamento; alterações precisam preservar a compatibilidade.

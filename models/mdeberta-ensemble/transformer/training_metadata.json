@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "labels": {
+    "0": "fake",
+    "1": "confiavel"
+  },
+  "task": "supervised_fake_news",
+  "max_length": 256,
+  "temperature": 1.6478583043722512,
+  "run_id": "658901685b1e42f88a0957f73a8e12e9",
+  "base_model": ".hf-cache/mdeberta-initial",
+  "source_model": "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli",
+  "source_revision": "8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c",
+  "split_signature": "abb9fd42cee195ac7f4fabf713508e3a70a6184703608c342796e6c53fffdcd4",
+  "dataset_sha256": "6789c846eb1b264f71a377bfd818635734540868007d56f661823b9d42091e0d",
+  "freeze_encoder_layers": 10
+}
