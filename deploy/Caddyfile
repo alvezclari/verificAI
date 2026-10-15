@@ -1,0 +1,8 @@
+{$SITE_ADDRESS} {
+	# A rota administrativa não participa da demonstração.
+	respond /api/reload-model* 404
+	request_body {
+		max_size 8KB
+	}
+	reverse_proxy app:8000
+}

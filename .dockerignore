@@ -1,0 +1,26 @@
+# Lista de inclusão: dados, credenciais, ambientes e histórico não entram no build.
+**
+!Dockerfile
+!requirements.txt
+!requirements-classificador.txt
+!requirements-inference.txt
+!run.py
+!backend/
+!backend/**
+!ml/
+!ml/**
+!frontend/
+!frontend/**
+!models/
+!models/mdeberta-ensemble/
+!models/mdeberta-ensemble/**
+!scripts/
+!scripts/check_model.py
+!scripts/smoke_test.py
+!deploy/
+!deploy/healthcheck.py
+**/__pycache__/
+**/*.pyc
+**/training_args.bin
+**/.env
+**/.env.*

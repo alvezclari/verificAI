@@ -1,0 +1,60 @@
+name: verificai-demo
+
+services:
+  app:
+    platform: linux/amd64
+    build: .
+    restart: unless-stopped
+    environment:
+      MODEL_BACKEND: ensemble
+      ENSEMBLE_MANIFEST: /app/models/mdeberta-ensemble/manifest.json
+      TRANSFORMER_DEVICE: cpu
+      FLASK_DEBUG: "false"
+      XAI_ENABLED: "${XAI_ENABLED:-true}"
+      XAI_MAX_EVALUATIONS: "${XAI_MAX_EVALUATIONS:-8}"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "1"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "deploy/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:-:80}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+volumes:
+  caddy_data:
+  caddy_config:
